@@ -132,6 +132,12 @@ Die vollständige Konfiguration unterstützt `userId`, `email`, `requestId`, `pr
 Für Vanilla-Websites und Angular-19-Hosts das separate Asset-Paket verwenden. Es enthält die eigene Angular-Runtime und hat keine Angular-Peer-Dependencies:
 
 ```bash
+npm install @espressotutorialsgmbh/et-espressi-support-chat-element
+```
+
+Für einen lokalen Build des Pakets:
+
+```bash
 npm run build:element
 npm pack ./dist/support-chat-element
 ```
@@ -172,4 +178,4 @@ npm run release:minor # neue Funktionen, z. B. 0.1.0 -> 0.2.0
 npm run release:major # inkompatible Änderungen, z. B. 0.1.0 -> 1.0.0
 ```
 
-Das Release-Skript aktualisiert die Version im Workspace, in beiden npm-Paketen und in `package-lock.json`, erstellt einen Release-Commit samt `vX.Y.Z`-Tag und pusht beides nach `origin`. Der Tag startet GitHub Actions: Der Workflow führt Lint, Tests und Builds aus, veröffentlicht `@espressotutorialsgmbh/et-espressi-support-chat` sowie das Custom-Element-Paket auf npmjs.com und erstellt ein GitHub Release mit automatisch generierten Notizen. Vor dem Aufruf müssen alle Änderungen committed sein. Dafür müssen `NPM_TOKEN` als GitHub Secret und Schreibrechte für `GITHUB_TOKEN` eingerichtet sein. Bereits verwendete Tags werden nicht erneut vergeben.
+Das Release-Skript aktualisiert die Version im Workspace, in beiden npm-Paketen und in `package-lock.json`, erstellt einen Release-Commit samt `vX.Y.Z`-Tag und pusht beides nach `origin`. Der Tag startet GitHub Actions: Der Workflow führt Lint, Tests und Builds aus, veröffentlicht `@espressotutorialsgmbh/et-espressi-support-chat` sowie `@espressotutorialsgmbh/et-espressi-support-chat-element` auf npmjs.com und erstellt ein GitHub Release mit automatisch generierten Notizen. Vor dem Aufruf müssen alle Änderungen committed sein. Dafür müssen `NPM_TOKEN` als GitHub Secret und Schreibrechte für `GITHUB_TOKEN` eingerichtet sein. Bereits verwendete Tags werden nicht erneut vergeben.
