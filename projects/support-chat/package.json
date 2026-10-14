@@ -1,0 +1,8 @@
+{
+  "name": "@espresso-tutorials/support-chat",
+  "version": "0.1.0",
+  "description": "Angular 22 support chat and framework-independent custom element",
+  "license": "UNLICENSED",
+  "sideEffects": false,
+  "peerDependencies": { "@angular/common": "^22.0.0", "@angular/core": "^22.0.0", "@angular/forms": "^22.0.0" }
+}

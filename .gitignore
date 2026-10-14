@@ -1,1 +1,8 @@
 /prompts/
+/node_modules/
+/dist/
+/.angular/
+/out-tsc/
+projects/support-chat/src/lib/components/support-chat.component.generated.css
+projects/support-chat/README.md
+projects/support-chat/LICENSE

@@ -1,0 +1,133 @@
+@if (!open) {
+  <button type="button" class="et-launcher" [class.et-left]="config.theme?.position === 'left'" (click)="show()" [attr.aria-label]="strings.title" [title]="strings.title">
+    <svg class="et-launcher-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true" focusable="false">
+      <path d="M320 128C231.6 128 160 199.6 160 288L256 288L256 448L192 448C139 448 96 405 96 352L96 288C96 164.3 196.3 64 320 64C443.7 64 544 164.3 544 288L544 576.1L520 576.1C380 576 292 576 256 576L256 528C256 501.5 277.5 480 304 480L336 480C362.5 480 384 501.5 384 528L384 528L496 528.1L496 435.2C481.9 443.4 465.5 448 448 448L384 448L384 288L480 288C480 199.6 408.4 128 320 128z" />
+    </svg>
+  </button>
+}
+
+@if (open) {
+  <section class="et-window" [class.et-left]="config.theme?.position === 'left'" [class.et-closing]="closing" role="dialog" aria-modal="false" [attr.aria-label]="strings.title" (keydown.escape)="minimize()" (animationend)="onWindowAnimationEnd($event)">
+    <header class="et-header et-flex et-items-center et-justify-between">
+      <div class="et-brand">
+        <svg class="et-brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 59.8785 55.8311" aria-hidden="true" focusable="false">
+          <path d="M11.7287,32.0091v17.8915C2.4852,42.9753-1.9835,30.4091.8384,19.1705c6.1795,1.0113,10.8903,6.3766,10.8903,12.8386Z" fill="#f3920b" />
+          <path d="M59.8782,26.1531c.0432,9.2709-4.4021,18.1732-11.712,23.7475v-17.8915c0-6.4621,4.7108-11.8273,10.8903-12.8386.5392,2.2383.8217,4.577.8217,6.9826Z" fill="#445281" />
+          <path d="M57.6882,14.8984c-8.128,1.6439-14.0774,8.8003-14.0767,17.2186,0,0,0,20.6727,0,20.6727-2.993,1.5393-6.2836,2.5878-9.76,3.0414V16.7203c.0041-7.4008,4.3491-13.7796,10.6561-16.7203,5.9218,3.2985,10.6095,8.5596,13.1806,14.8984Z" fill="#445281" />
+          <path d="M26.0434,16.7203v39.1108c-3.4765-.4536-6.767-1.5021-9.76-3.0414v-20.6727c.001-8.418-5.9489-15.5749-14.0767-17.2186C4.7778,8.5596,9.4655,3.2985,15.3873,0c6.307,2.9407,10.6521,9.3196,10.6561,16.7203Z" fill="#f3920b" />
+        </svg>
+        <strong>{{ strings.title }}</strong>
+      </div>
+      <button type="button" class="et-close" (click)="minimize()" [attr.aria-label]="strings.close">×</button>
+    </header>
+    <div class="et-body" aria-live="polite">
+      @if (!closed) {
+        <aside class="et-notices">
+          <p class="et-note">
+            <span class="et-note-badge" aria-hidden="true">✦</span>
+            <span>{{ strings.ai }}</span>
+            @if (config.privacyUrl && safeLink(config.privacyUrl)) {
+              <a [href]="config.privacyUrl" target="_blank" rel="noopener noreferrer">{{ strings.privacy }}</a>
+            }
+          </p>
+          <p class="et-hint"><span class="et-hint-icon" aria-hidden="true">i</span>{{ strings.sensitive }}</p>
+        </aside>
+        @if (!started && messages.length === 0) {
+          <div class="et-bubble et-assistant">{{ strings.welcome }}</div>
+        }
+      }
+      @if (closed) {
+        <div class="et-chat-ended">
+          <p role="status">{{ strings.chatEnded }}</p>
+          <button type="button" class="et-new-chat" (click)="startNewChat()">{{ strings.newChat }}</button>
+        </div>
+      }
+      @for (message of messages; track $index) {
+        <article class="et-bubble" [class.et-user]="message.role === 'user'" [class.et-assistant]="message.role === 'assistant'">
+          <span>{{ message.text }}</span>
+          @if (message.result?.sources?.length) {
+            <ul class="et-sources">
+              <li class="et-sources-label">{{ strings.sources }}</li>
+              @for (source of message.result.sources; track $index) {
+                <li>
+                  @if (source.url && safeLink(source.url)) {
+                    <a [href]="source.url" target="_blank" rel="noopener noreferrer">{{ source.title || source.url }}</a>
+                  } @else {
+                    {{ source.title || source.excerpt }}
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </article>
+      }
+      @if (askEmail && !closed) {
+        <form class="et-email" (ngSubmit)="ticketState === 'pending' ? continueTicketAfterEmail() : continueAfterEmail()">
+          <label class="et-font-semibold et-mb-0" for="support-email">{{ strings.emailLabel }}</label>
+          <p class="et-mt-0">
+            {{ strings.emailHint }}
+            @if (config.privacyUrl && safeLink(config.privacyUrl)) {
+              <a [href]="config.privacyUrl" target="_blank" rel="noopener noreferrer">{{ strings.privacy }}</a>
+            }
+          </p>
+          <input id="support-email" name="support-email" type="email" autocomplete="email" required [(ngModel)]="emailDraft" [attr.aria-invalid]="!!emailError" />
+          @if (emailError) {
+            <span role="alert">{{ emailError }}</span>
+          }
+          <button type="submit" [disabled]="busy || !validEmail(emailDraft)">{{ strings.continue }}</button>
+        </form>
+      }
+      @if (showResolution) {
+        <div class="et-action">
+          <strong>{{ strings.resolved }}</strong>
+          <button type="button" [disabled]="busy" (click)="resolve(true)">{{ strings.yes }}</button>
+          <button type="button" [disabled]="busy" (click)="resolve(false)">{{ strings.no }}</button>
+        </div>
+      }
+      @if (ticketState === 'offered' || ticketState === 'pending') {
+        <div class="et-action"><button type="button" (click)="ticketState = 'pending'; createTicket()" [disabled]="busy">{{ strings.ticket }}</button></div>
+      }
+      @if (ticketState === 'submitted') {
+        <p role="status">{{ strings.ticketSuccess }}</p>
+      }
+      @if (ticketState === 'unknown') {
+        <p role="alert">{{ strings.ticketUnknown }}</p>
+      }
+      @if (ticketState === 'failed') {
+        <p role="alert">{{ strings.ticketFailed }}</p>
+      }
+      @if (showFeedback) {
+        <div class="et-action">
+          <strong>{{ strings.feedback }}</strong>
+          <label for="support-comment">{{ strings.comment }}</label>
+          <textarea id="support-comment" [(ngModel)]="feedbackComment"></textarea>
+          <button type="button" [disabled]="busy" (click)="end('positive')">👍</button>
+          <button type="button" [disabled]="busy" (click)="end('negative')">👎</button>
+          <button type="button" [disabled]="busy" (click)="skipFeedback()">{{ strings.skip }}</button>
+        </div>
+      }
+      @if (error) {
+        <p class="et-error" role="alert">{{ error }}</p>
+      }
+      @if (pendingUserMessage && !askEmail && !busy) {
+        <button type="button" (click)="sendPending()">{{ strings.retry }}</button>
+      }
+      @if (busy) {
+        <div class="et-loading" role="status" [attr.aria-label]="strings.loading">
+          <span>{{ strings.loading }}</span>
+          <span class="et-loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        </div>
+      }
+    </div>
+    @if (!showFeedback && !closed) {
+      <form class="et-composer" (ngSubmit)="send()">
+        <label class="et-sr-only" for="support-message">{{ strings.placeholder }}</label>
+        <textarea id="support-message" name="message" [(ngModel)]="input" [placeholder]="strings.placeholder" [disabled]="busy || askEmail || !!pendingUserMessage"></textarea>
+        <button type="submit" [disabled]="busy || askEmail || !!pendingUserMessage || !input.trim()">{{ strings.send }}</button>
+      </form>
+    }
+    @if (started && !closed && !showFeedback) {
+      <button type="button" class="et-end" (click)="end()" [disabled]="busy">{{ strings.end }}</button>
+    }
+  </section>
+}

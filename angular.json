@@ -1,0 +1,57 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "support-chat": {
+      "projectType": "library",
+      "root": "projects/support-chat",
+      "sourceRoot": "projects/support-chat/src",
+      "prefix": "et",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:ng-packagr",
+          "options": { "project": "projects/support-chat/ng-package.json" },
+          "configurations": {
+            "production": { "tsConfig": "projects/support-chat/tsconfig.lib.prod.json" },
+            "development": { "tsConfig": "projects/support-chat/tsconfig.lib.json" }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular/build:karma",
+          "options": {
+            "tsConfig": "projects/support-chat/tsconfig.spec.json",
+            "polyfills": ["zone.js", "zone.js/testing"],
+            "assets": [{ "glob": "**/*", "input": "dist/support-chat-element/browser", "output": "widget" }]
+          }
+        }
+      }
+    },
+    "support-chat-element": {
+      "projectType": "application",
+      "root": "projects/support-chat-element",
+      "sourceRoot": "projects/support-chat-element/src",
+      "prefix": "et",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/support-chat-element",
+            "browser": "projects/support-chat-element/src/main.ts",
+            "index": "projects/support-chat-element/src/index.html",
+            "tsConfig": "projects/support-chat-element/tsconfig.app.json",
+            "polyfills": [],
+            "styles": ["projects/support-chat-element/src/styles.css"],
+            "outputMode": "static"
+          },
+          "configurations": { "development": { "optimization": false, "sourceMap": true }, "production": { "optimization": true, "sourceMap": false, "outputHashing": "none" } },
+          "defaultConfiguration": "production"
+        }
+      }
+    }
+  },
+  "cli": {
+    "analytics": false
+  }
+}

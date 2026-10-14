@@ -1,0 +1,8 @@
+{
+  "name": "@espresso-tutorials/support-chat-element",
+  "version": "0.1.0",
+  "description": "Self-contained Espresso Tutorials support chat custom element assets",
+  "license": "UNLICENSED",
+  "files": ["browser", "README.md", "LICENSE"],
+  "sideEffects": false
+}

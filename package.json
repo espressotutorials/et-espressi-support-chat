@@ -1,0 +1,52 @@
+{
+  "name": "@espresso-tutorials/support-chat-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reusable Angular support chat library and self-contained custom element",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "npm run build:styles && npm run build:library && npm run build:element",
+    "build:styles": "tailwindcss -c tailwind.config.js -i projects/support-chat/src/lib/components/support-chat.component.pcss -o projects/support-chat/src/lib/components/support-chat.component.generated.css --minify",
+    "build:library": "npm run build:styles && node scripts/prepare-package.mjs && cross-env NG_BUILD_CACHE_STORE=sqlite ng build support-chat",
+    "build:element": "npm run build:styles && cross-env NG_BUILD_CACHE_STORE=sqlite ng build support-chat-element --configuration production && node scripts/package-element.mjs",
+    "demo": "npm run build:element && node scripts/serve-demo.mjs",
+    "test": "npm run build:library && npm run build:element && npm run build:styles && cross-env NG_BUILD_CACHE_STORE=sqlite ng test support-chat --watch=false --browsers=ChromeHeadless --reporters=progress",
+    "pack:check": "npm run build && node scripts/check-packages.mjs",
+    "lint": "eslint projects/**/*.ts"
+  },
+  "peerDependencies": {
+    "@angular/common": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/forms": "^22.0.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.0.0",
+    "@angular/cli": "^22.0.0",
+    "@angular/common": "^22.0.0",
+    "@angular/compiler-cli": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/elements": "^22.0.0",
+    "@angular/forms": "^22.0.0",
+    "@angular/platform-browser": "^22.0.0",
+    "@eslint/js": "^9.0.0",
+    "@espressotutorialsgmbh/espresso-tailwind-config": "^3.1.0",
+    "@types/jasmine": "^5.1.0",
+    "angular-eslint": "^22.0.0",
+    "autoprefixer": "^10.4.21",
+    "cross-env": "^10.1.0",
+    "eslint": "^9.0.0",
+    "jasmine-core": "^5.1.0",
+    "karma": "^6.4.0",
+    "karma-chrome-launcher": "^3.2.0",
+    "karma-coverage": "^2.2.1",
+    "karma-jasmine": "^5.1.0",
+    "karma-jasmine-html-reporter": "^2.1.0",
+    "ng-packagr": "^22.0.0",
+    "tailwindcss": "3.4.19",
+    "typescript": "~6.0.0",
+    "typescript-eslint": "^8.0.0"
+  },
+  "dependencies": {
+    "zone.js": "^0.16.3"
+  }
+}
