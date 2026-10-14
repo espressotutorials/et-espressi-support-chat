@@ -1,8 +1,21 @@
 {
-  "name": "@espresso-tutorials/support-chat",
-  "version": "0.1.0",
+  "name": "@espressotutorialsgmbh/et-espressi-support-chat",
+  "version": "0.2.0",
   "description": "Angular 22 support chat and framework-independent custom element",
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/espressotutorials/et-espressi-support-chat.git",
+    "directory": "projects/support-chat"
+  },
+  "homepage": "https://github.com/espressotutorials/et-espressi-support-chat#readme",
+  "bugs": {
+    "url": "https://github.com/espressotutorials/et-espressi-support-chat/issues"
+  },
   "sideEffects": false,
-  "peerDependencies": { "@angular/common": "^22.0.0", "@angular/core": "^22.0.0", "@angular/forms": "^22.0.0" }
+  "peerDependencies": {
+    "@angular/common": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/forms": "^22.0.0"
+  }
 }

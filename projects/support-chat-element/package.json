@@ -1,8 +1,21 @@
 {
   "name": "@espresso-tutorials/support-chat-element",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Self-contained Espresso Tutorials support chat custom element assets",
   "license": "UNLICENSED",
-  "files": ["browser", "README.md", "LICENSE"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/espressotutorials/et-espressi-support-chat.git",
+    "directory": "projects/support-chat-element"
+  },
+  "homepage": "https://github.com/espressotutorials/et-espressi-support-chat#readme",
+  "bugs": {
+    "url": "https://github.com/espressotutorials/et-espressi-support-chat/issues"
+  },
+  "files": [
+    "browser",
+    "README.md",
+    "LICENSE"
+  ],
   "sideEffects": false
 }

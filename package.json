@@ -1,9 +1,14 @@
 {
   "name": "@espresso-tutorials/support-chat-workspace",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Reusable Angular support chat library and self-contained custom element",
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/espressotutorials/et-espressi-support-chat.git"
+  },
+  "homepage": "https://github.com/espressotutorials/et-espressi-support-chat#readme",
   "scripts": {
     "build": "npm run build:styles && npm run build:library && npm run build:element",
     "build:styles": "tailwindcss -c tailwind.config.js -i projects/support-chat/src/lib/components/support-chat.component.pcss -o projects/support-chat/src/lib/components/support-chat.component.generated.css --minify",
@@ -12,7 +17,11 @@
     "demo": "npm run build:element && node scripts/serve-demo.mjs",
     "test": "npm run build:library && npm run build:element && npm run build:styles && cross-env NG_BUILD_CACHE_STORE=sqlite ng test support-chat --watch=false --browsers=ChromeHeadless --reporters=progress",
     "pack:check": "npm run build && node scripts/check-packages.mjs",
-    "lint": "eslint projects/**/*.ts"
+    "lint": "eslint projects/**/*.ts",
+    "release": "node scripts/release.mjs",
+    "release:patch": "npm run release -- patch",
+    "release:minor": "npm run release -- minor",
+    "release:major": "npm run release -- major"
   },
   "peerDependencies": {
     "@angular/common": "^22.0.0",

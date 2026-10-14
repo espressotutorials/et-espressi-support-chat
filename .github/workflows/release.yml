@@ -5,7 +5,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions: { contents: read, id-token: write }
+    permissions: { contents: write, id-token: write }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,9 +17,12 @@ jobs:
       - run: npm run build
       - run: npm pack ./dist/support-chat
       - run: npm pack ./dist/support-chat-element
-      - run: npm publish ./espresso-tutorials-support-chat-*.tgz --access public --provenance
+      - run: npm publish ./espressotutorialsgmbh-et-espressi-support-chat-*.tgz --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm publish ./espresso-tutorials-support-chat-element-*.tgz --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

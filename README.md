@@ -6,16 +6,19 @@ Wiederverwendbares Support-Chat-Widget mit Angular-22-Library und eigenständige
 
 - Node.js 24 und npm
 - Angular 22 im Host-Projekt, wenn die Angular-Library verwendet wird
-- Git-Zugriff auf das private Quell-Repository
 
 Die Angular-Library hat Peer-Dependencies auf `@angular/common`, `@angular/core` und `@angular/forms` in Version `^22.0.0`. Angular-19-Projekte dürfen diese Library nicht importieren; dafür ist das weiter unten beschriebene eigenständige Custom Element vorgesehen.
+
+GitHub-Projekt: [espressotutorials/et-espressi-support-chat](https://github.com/espressotutorials/et-espressi-support-chat). Das Repository ist ein Workspace und kein installierbares npm-Paket; für Anwendungen die veröffentlichten Pakete verwenden. Die öffentliche Sichtbarkeit des Repositorys ändert nichts an der Lizenz: Es gilt der Hinweis in [LICENSE](LICENSE).
+
+Die wichtigsten Projektentscheidungen und Paketgrenzen sind in [ARCHITECTURE.md](ARCHITECTURE.md) beschrieben.
 
 ## Repository bauen und prüfen
 
 Repository auschecken und Abhängigkeiten installieren:
 
 ```bash
-git clone git@github.com:espressotutorials/et-espressi-support-chat.git
+git clone https://github.com/espressotutorials/et-espressi-support-chat.git
 cd et-espressi-support-chat
 npm ci
 ```
@@ -39,9 +42,9 @@ npm run demo
 
 Danach ist das Custom Element unter <http://localhost:4200> erreichbar. API-URL, Plattform und Vector-Store-ID der Demo stehen in [examples/vanilla-html/index.html](examples/vanilla-html/index.html).
 
-## Aus einem privaten Repository in Angular installieren
+## Pakete lokal bauen und installieren
 
-Das Git-Repository ist ein privater Workspace mit mehreren Projekten. Deshalb kann man dessen Git-URL nicht direkt als Angular-Library-Abhängigkeit installieren: Das Root-`package.json` ist ein privates Workspace-Paket. Baue die Library und installiere das erzeugte npm-Paket als Tarball.
+Das Root-`package.json` ist ein privater npm-Workspace und kein veröffentlichbares Paket. Zum lokalen Entwickeln kann die Angular-Library als Tarball gebaut und installiert werden.
 
 Im geklonten Support-Chat-Repository:
 
@@ -51,15 +54,15 @@ npm run build:library
 npm pack ./dist/support-chat
 ```
 
-`npm pack` legt im aktuellen Verzeichnis zum Beispiel `espresso-tutorials-support-chat-0.1.0.tgz` ab. Im Angular-22-Host-Projekt installierst du diesen Tarball mit seinem Pfad:
+`npm pack` legt im aktuellen Verzeichnis zum Beispiel `espressotutorialsgmbh-et-espressi-support-chat-0.2.0.tgz` ab. Im Angular-22-Host-Projekt installierst du den Tarball oder das veröffentlichte Paket:
 
 ```bash
-npm install /pfad/zum/support-chat/espresso-tutorials-support-chat-0.1.0.tgz
+npm install /pfad/zum/support-chat/espressotutorialsgmbh-et-espressi-support-chat-0.1.0.tgz
+# oder nach dem Release:
+npm install @espressotutorialsgmbh/et-espressi-support-chat
 ```
 
 Bei einer neuen Version die Library im Quell-Repository erneut bauen und den neuen Tarball im Host installieren. Der Host speichert die Paketversion und den Installationspfad in `package.json` und `package-lock.json`. Voraussetzung ist, dass die Angular-App Angular 22 verwendet.
-
-> Das aktuelle Release-Workflow veröffentlicht die beiden Pakete mit `npm publish --access public` auf npmjs.com. Das Quell-Repository kann privat sein, während veröffentlichte Pakete öffentlich sind. Für eine Installation aus einer privaten npm-Registry müsste der Release-Workflow samt Registry- und Zugriffsrechten entsprechend umgestellt werden.
 
 ## In einer Angular-22-App verwenden
 
@@ -68,7 +71,7 @@ Für eine Standalone-App die Konfiguration einmalig in `app.config.ts` bereitste
 ```ts
 import { ApplicationConfig } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
-import { provideEspressoSupportChat } from '@espresso-tutorials/support-chat';
+import { provideEspressoSupportChat } from '@espressotutorialsgmbh/et-espressi-support-chat';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -90,7 +93,7 @@ Importiere die Komponente und platziere sie im App-Template:
 
 ```ts
 import { Component } from '@angular/core';
-import { SupportChatComponent } from '@espresso-tutorials/support-chat';
+import { SupportChatComponent } from '@espressotutorialsgmbh/et-espressi-support-chat';
 
 @Component({
   selector: 'app-root',
@@ -106,8 +109,8 @@ Alternativ funktioniert die klassische NgModule-Integration über `SupportChatMo
 ```ts
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { provideEspressoSupportChat } from '@espresso-tutorials/support-chat';
-import { SupportChatModule } from '@espresso-tutorials/support-chat';
+import { provideEspressoSupportChat } from '@espressotutorialsgmbh/et-espressi-support-chat';
+import { SupportChatModule } from '@espressotutorialsgmbh/et-espressi-support-chat';
 
 @NgModule({
   imports: [BrowserModule, SupportChatModule],
@@ -161,4 +164,12 @@ Die API-Antwort des Nachrichtenendpunkts kann den Antworttext unter `answer` lie
 
 ## Releases
 
-GitHub Actions führt bei einem passenden `vX.Y.Z`-Tag Tests, Builds und Paketprüfungen aus. Die Version im Tag muss mit beiden Paketversionen übereinstimmen; für die Veröffentlichung wird `NPM_TOKEN` benötigt. Vor einer Veröffentlichung Antwortformate, CORS, Session-TTL und Ticketstatus gegen die eingesetzte Node-API prüfen.
+Die Pakete verwenden dieselbe SemVer-Version. Für ein Release die gewünschte Erhöhung ausführen:
+
+```bash
+npm run release:patch # Fehlerbehebungen, z. B. 0.1.0 -> 0.1.1
+npm run release:minor # neue Funktionen, z. B. 0.1.0 -> 0.2.0
+npm run release:major # inkompatible Änderungen, z. B. 0.1.0 -> 1.0.0
+```
+
+Das Release-Skript aktualisiert die Version im Workspace, in beiden npm-Paketen und in `package-lock.json`, erstellt einen Release-Commit samt `vX.Y.Z`-Tag und pusht beides nach `origin`. Der Tag startet GitHub Actions: Der Workflow führt Lint, Tests und Builds aus, veröffentlicht `@espressotutorialsgmbh/et-espressi-support-chat` sowie das Custom-Element-Paket auf npmjs.com und erstellt ein GitHub Release mit automatisch generierten Notizen. Vor dem Aufruf müssen alle Änderungen committed sein. Dafür müssen `NPM_TOKEN` als GitHub Secret und Schreibrechte für `GITHUB_TOKEN` eingerichtet sein. Bereits verwendete Tags werden nicht erneut vergeben.
