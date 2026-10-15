@@ -125,7 +125,7 @@ import { SupportChatModule } from '@espressotutorialsgmbh/et-espressi-support-ch
 export class AppModule {}
 ```
 
-Die vollständige Konfiguration unterstützt `userId`, `email`, `requestId`, `product`, `privacyUrl`, `supportUrl`, `theme` und `instanceId`. Verwende pro Widget eine eigene stabile, nicht personenbezogene `instanceId`, wenn mehrere Widgets oder Session-Wiederherstellung benötigt werden. Die E-Mail-Adresse ist Kontaktinformation und wird nicht als Chatnachricht gesendet.
+Die vollständige Konfiguration unterstützt `userId`, `email`, `requestId`, `product`, `privacyUrl`, `supportUrl`, `theme` und `instanceId`. Die Widget-Texte sind auf Deutsch (`de`), Englisch (`en`), Spanisch (`es`), Französisch (`fr`) und Japanisch (`ja`) verfügbar. Portugiesisch (`pt`) wird von der API angenommen, die Widget-Texte fallen dafür auf Deutsch zurück. Verwende pro Widget eine eigene stabile, nicht personenbezogene `instanceId`, wenn mehrere Widgets oder Session-Wiederherstellung benötigt werden. Die E-Mail-Adresse ist Kontaktinformation und wird nicht als Chatnachricht gesendet.
 
 ## Vanilla HTML und Angular 19
 

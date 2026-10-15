@@ -9,7 +9,9 @@ export interface ChatStrings {
   chatEnded: string; newChat: string;
 }
 
-const messages: Record<'de' | 'en', ChatStrings> = {
+type LocalizedLanguage = Exclude<SupportLanguage, 'pt'>;
+
+const messages: Record<LocalizedLanguage, ChatStrings> = {
   en: {
     title: 'Support-Team', welcome: 'Hello! How can we help?', ai: 'AI-assisted support', privacy: 'Privacy',
     emailLabel: 'Your email address', emailHint: 'Please provide your email so we can associate your request with you.',
@@ -33,10 +35,46 @@ const messages: Record<'de' | 'en', ChatStrings> = {
     expired: 'Die Sitzung ist abgelaufen. Mit erneutem Senden startest du einen neuen Chat.', rateLimited: 'Bitte warte kurz, bevor du es erneut versuchst.', retry: 'Erneut senden', skip: 'Überspringen',
     loading: 'Einen Moment bitte…', sources: 'Quellen',
     chatEnded: 'Der Chat ist beendet. Wenn du weitere Fragen hast, starte einfach einen neuen Chat.', newChat: 'Neuen Chat starten'
+  },
+  es: {
+    title: 'Equipo de soporte', welcome: '¡Hola! ¿En qué podemos ayudarte?', ai: 'Soporte asistido por IA', privacy: 'Privacidad',
+    emailLabel: 'Tu dirección de correo electrónico', emailHint: 'Indica tu correo electrónico para que podamos asociar tu solicitud contigo.',
+    emailInvalid: 'Introduce una dirección de correo electrónico válida.', send: 'Enviar', placeholder: 'Escribe tu mensaje…', end: 'Finalizar chat', close: 'Cerrar',
+    resolved: '¿Se ha resuelto tu problema?', yes: 'Sí', no: 'No', ticket: 'Crear una solicitud de soporte',
+    feedback: '¿Qué te ha parecido la atención recibida?', comment: 'Comentario opcional', continue: 'Continuar',
+    ticketSuccess: 'La solicitud se ha enviado correctamente.', ticketUnknown: 'No se ha podido confirmar el estado de la solicitud. No la vuelvas a enviar.', ticketFailed: 'No se ha podido enviar la solicitud. Inténtalo de nuevo más tarde.', noKnowledge: 'No he encontrado una respuesta fiable. Puedes crear una solicitud de soporte.',
+    genericError: 'Se ha producido un error. Inténtalo de nuevo.', sensitive: 'No incluyas información confidencial en tu mensaje.',
+    expired: 'La sesión ha caducado. Vuelve a enviar el mensaje para iniciar un chat nuevo.', rateLimited: 'Espera un momento antes de volver a intentarlo.', retry: 'Reintentar envío', skip: 'Omitir',
+    loading: 'Un momento, por favor…', sources: 'Fuentes',
+    chatEnded: 'Este chat ha finalizado. Si tienes más preguntas, inicia un chat nuevo.', newChat: 'Iniciar un chat nuevo'
+  },
+  fr: {
+    title: 'Équipe d’assistance', welcome: 'Bonjour ! Comment pouvons-nous vous aider ?', ai: 'Assistance avec IA', privacy: 'Confidentialité',
+    emailLabel: 'Votre adresse e-mail', emailHint: 'Veuillez indiquer votre adresse e-mail afin que nous puissions associer votre demande à votre profil.',
+    emailInvalid: 'Veuillez saisir une adresse e-mail valide.', send: 'Envoyer', placeholder: 'Écrivez votre message…', end: 'Terminer la conversation', close: 'Fermer',
+    resolved: 'Votre problème est-il résolu ?', yes: 'Oui', no: 'Non', ticket: 'Créer une demande d’assistance',
+    feedback: 'Comment s’est passée votre expérience avec notre assistance ?', comment: 'Commentaire facultatif', continue: 'Continuer',
+    ticketSuccess: 'Votre demande a bien été envoyée.', ticketUnknown: 'Le statut de votre demande n’est pas confirmé. Veuillez ne pas la renvoyer.', ticketFailed: 'Votre demande n’a pas pu être envoyée. Veuillez réessayer plus tard.', noKnowledge: 'Je n’ai pas trouvé de réponse fiable. Vous pouvez créer une demande d’assistance.',
+    genericError: 'Une erreur s’est produite. Veuillez réessayer.', sensitive: 'Veuillez ne pas inclure d’informations sensibles dans votre message.',
+    expired: 'La session a expiré. Renvoyez votre message pour démarrer une nouvelle conversation.', rateLimited: 'Veuillez patienter avant de réessayer.', retry: 'Renvoyer', skip: 'Ignorer',
+    loading: 'Veuillez patienter…', sources: 'Sources',
+    chatEnded: 'Cette conversation est terminée. Si vous avez d’autres questions, démarrez-en une nouvelle.', newChat: 'Démarrer une nouvelle conversation'
+  },
+  ja: {
+    title: 'サポートチーム', welcome: 'こんにちは。どのようなご用件でしょうか？', ai: 'AIによるサポート', privacy: 'プライバシー',
+    emailLabel: 'メールアドレス', emailHint: 'お問い合わせをお客様に紐づけるため、メールアドレスを入力してください。',
+    emailInvalid: '有効なメールアドレスを入力してください。', send: '送信', placeholder: 'メッセージを入力…', end: 'チャットを終了', close: '閉じる',
+    resolved: '問題は解決しましたか？', yes: 'はい', no: 'いいえ', ticket: 'サポートチケットを作成',
+    feedback: 'サポートの対応はいかがでしたか？', comment: 'コメント（任意）', continue: '続行',
+    ticketSuccess: 'チケットを送信しました。', ticketUnknown: 'チケットの状態を確認できません。再送信しないでください。', ticketFailed: 'チケットを送信できませんでした。時間をおいて再度お試しください。', noKnowledge: '確かな回答が見つかりませんでした。サポートチケットを作成できます。',
+    genericError: 'エラーが発生しました。もう一度お試しください。', sensitive: 'メッセージに機密情報を入力しないでください。',
+    expired: 'セッションの有効期限が切れました。もう一度送信すると新しいチャットが始まります。', rateLimited: '少し待ってからもう一度お試しください。', retry: '再送信', skip: 'スキップ',
+    loading: 'しばらくお待ちください…', sources: '参照元',
+    chatEnded: 'このチャットは終了しました。ご質問がある場合は、新しいチャットを開始してください。', newChat: '新しいチャットを開始'
   }
 };
 
-/** UI messages supported by the initial release. Other configured languages currently fall back to German. */
+/** Portuguese is accepted by the API but currently uses the German UI strings. */
 export function getChatStrings(language: SupportLanguage): ChatStrings {
-  return messages[language === 'en' ? 'en' : 'de'];
+  return language in messages ? messages[language as LocalizedLanguage] : messages.de;
 }
