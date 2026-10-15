@@ -26,7 +26,7 @@ export class SupportChatComponent implements OnChanges {
   @Input() platform?: string;
   @Input() vectorStoreId?: string;
   @Input() language?: SupportLanguage;
-  @Input() userId?: string | null;
+  @Input() userId?: string | number | null;
   @Input() email?: string | null;
   @Input() requestId?: string | null;
   @Input() product?: string;
@@ -65,7 +65,7 @@ export class SupportChatComponent implements OnChanges {
   private emailCapturedInWidget = false;
 
   constructor() {
-    this.askEmail = !this.config.email && !this.config.userId;
+    this.askEmail = !this.config.email && !this.hasUserId(this.config.userId);
     this.emailDraft = this.config.email ?? '';
     this.destroyRef.onDestroy(() => { this.identityGeneration++; this.api.cancelPending(); });
   }
@@ -81,16 +81,20 @@ export class SupportChatComponent implements OnChanges {
     Object.assign(this.config, {
       ...(this.apiBaseUrl ? { apiBaseUrl: this.apiBaseUrl } : {}), ...(this.platform ? { platform: this.platform } : {}),
       ...(this.vectorStoreId ? { vectorStoreId: this.vectorStoreId } : {}), ...(this.language ? { language: this.language } : {}),
-      ...(this.userId !== undefined ? { userId: this.userId || null } : {}), ...(this.email !== undefined ? { email: this.email || null } : {}), ...(this.requestId !== undefined ? { requestId: this.requestId || null } : {}),
+      ...(this.userId !== undefined ? { userId: this.userId === '' ? null : this.userId } : {}), ...(this.email !== undefined ? { email: this.email || null } : {}), ...(this.requestId !== undefined ? { requestId: this.requestId || null } : {}),
       ...(this.product ? { product: this.product } : {}), ...(this.privacyUrl ? { privacyUrl: this.privacyUrl } : {}),
       ...(this.supportUrl ? { supportUrl: this.supportUrl } : {}), ...(this.instanceId ? { instanceId: this.instanceId } : {})
     });
-    this.askEmail = !this.config.email && !this.config.userId;
+    this.askEmail = !this.config.email && !this.hasUserId(this.config.userId);
     this.emailDraft = this.config.email ?? '';
   }
 
   get strings(): ChatStrings {
     return getChatStrings(this.config.language);
+  }
+
+  private hasUserId(userId: string | number | null | undefined): boolean {
+    return userId !== null && userId !== undefined && userId !== '';
   }
 
   async show(): Promise<void> {
@@ -104,7 +108,7 @@ export class SupportChatComponent implements OnChanges {
         this.emailDraft = cachedEmail;
         this.emailCapturedInWidget = true;
       }
-      this.askEmail = !this.config.email && !this.config.userId;
+      this.askEmail = !this.config.email && !this.hasUserId(this.config.userId);
     }
     this.changeDetector.markForCheck();
   }
@@ -141,7 +145,7 @@ export class SupportChatComponent implements OnChanges {
   }
   async send(): Promise<void> {
     if (this.busy || !this.input.trim()) return;
-    if (!this.config.email && !this.config.userId) { this.pendingUserMessage = this.input.trim(); this.pendingClientMessageId = this.uuid(); this.input = ''; this.askEmail = true; return; }
+    if (!this.config.email && !this.hasUserId(this.config.userId)) { this.pendingUserMessage = this.input.trim(); this.pendingClientMessageId = this.uuid(); this.input = ''; this.askEmail = true; return; }
     this.pendingUserMessage = this.input.trim(); this.input = '';
     this.pendingClientMessageId = this.uuid(); this.pendingMessageAdded = false;
     await this.sendPending();
@@ -156,7 +160,7 @@ export class SupportChatComponent implements OnChanges {
       if (!session && this.started) {
         this.started = false;
         this.clearCapturedEmail();
-        if (!this.config.email && !this.config.userId) {
+        if (!this.config.email && !this.hasUserId(this.config.userId)) {
           this.askEmail = true;
           return;
         }
@@ -173,7 +177,7 @@ export class SupportChatComponent implements OnChanges {
     } catch (e) {
       if (generation !== this.identityGeneration) return;
       if (e instanceof SupportChatApiError && e.code === 'EMAIL_REQUIRED') { this.pendingUserMessage = this.pendingUserMessage || this.messages.at(-1)?.text || ''; this.pendingClientMessageId ||= this.uuid(); this.askEmail = true; }
-      else if (e instanceof SupportChatApiError && e.code === 'SESSION_EXPIRED') { this.sessions.invalidate(); this.clearCapturedEmail(); this.started = false; this.askEmail = !this.config.email && !this.config.userId; this.error = this.strings.expired; }
+      else if (e instanceof SupportChatApiError && e.code === 'SESSION_EXPIRED') { this.sessions.invalidate(); this.clearCapturedEmail(); this.started = false; this.askEmail = !this.config.email && !this.hasUserId(this.config.userId); this.error = this.strings.expired; }
       else if (e instanceof SupportChatApiError && e.code === 'NO_KNOWLEDGE_MATCH') { this.error = this.strings.noKnowledge; this.ticketState = 'offered'; }
       else this.error = e instanceof SupportChatApiError && e.code === 'RATE_LIMITED' ? this.strings.rateLimited : this.strings.genericError;
     } finally { this.busy = false; this.changeDetector.markForCheck(); }
@@ -229,7 +233,7 @@ export class SupportChatComponent implements OnChanges {
     this.messages = []; this.started = false; this.closed = false; this.showFeedback = false; this.showResolution = false;
     this.ticketState = ''; this.error = ''; this.input = ''; this.pendingUserMessage = ''; this.pendingClientMessageId = '';
     this.pendingMessageAdded = false; this.feedbackComment = ''; this.lastAssistantMessageId = undefined;
-    this.askEmail = !this.config.email && !this.config.userId;
+    this.askEmail = !this.config.email && !this.hasUserId(this.config.userId);
     this.emailDraft = this.config.email ?? '';
     this.changeDetector.markForCheck();
   }
@@ -243,7 +247,7 @@ export class SupportChatComponent implements OnChanges {
   private clearCapturedEmail(): void {
     if (!this.emailCapturedInWidget) return;
     this.config.email = null; this.emailDraft = ''; this.emailCapturedInWidget = false;
-    this.askEmail = !this.config.userId;
+    this.askEmail = !this.hasUserId(this.config.userId);
   }
   safeLink(url: string): boolean { try { return new URL(url, typeof location === 'undefined' ? 'https://localhost/' : location.href).protocol === 'https:' || new URL(url, typeof location === 'undefined' ? 'https://localhost/' : location.href).protocol === 'http:'; } catch { return false; } }
   private uuid(): string { return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`; }

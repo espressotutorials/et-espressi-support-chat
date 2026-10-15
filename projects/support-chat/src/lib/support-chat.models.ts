@@ -1,7 +1,7 @@
 export type SupportLanguage = 'de' | 'en' | 'fr' | 'es' | 'pt' | 'ja';
 export interface SupportChatConfig {
   apiBaseUrl: string; platform: string; vectorStoreId: string; language: SupportLanguage;
-  userId?: string | null; email?: string | null; requestId?: string | null; product?: string;
+  userId?: string | number | null; email?: string | null; requestId?: string | null; product?: string;
   privacyUrl?: string; supportUrl?: string;
   theme?: { accentColor?: string; position?: 'right' | 'left'; zIndex?: number };
   /** Stable per embedding when multiple instances on one page need independent restoration. */
@@ -10,7 +10,7 @@ export interface SupportChatConfig {
 export interface PageContext { pagePath: string; }
 export interface SessionCreateRequest {
   platform: string; vectorStoreId: string; language: SupportLanguage;
-  userId?: string; email?: string; pageContext?: PageContext;
+  userId?: string | number; email?: string; pageContext?: PageContext;
 }
 export interface SupportSession {
   chatId: string; sessionToken: string; contactStatus?: string; platform: string;

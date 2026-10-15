@@ -11,7 +11,7 @@ export class SupportChatSessionService {
   private active?: SupportSession;
   private cachedEmail?: string;
   private readonly volatileInstance = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  private key(): string { return `espresso-support-chat:v1:${encodeURIComponent(this.config.platform)}:${encodeURIComponent(this.config.instanceId ?? this.volatileInstance)}:${encodeURIComponent(this.config.userId ?? 'anonymous')}`; }
+  private key(): string { return `espresso-support-chat:v1:${encodeURIComponent(this.config.platform)}:${encodeURIComponent(this.config.instanceId ?? this.volatileInstance)}:${encodeURIComponent(this.config.userId == null || this.config.userId === '' ? 'anonymous' : String(this.config.userId))}`; }
   private emailKey(): string { return `${this.key()}:contact-email`; }
   cacheEmail(email: string): void {
     this.cachedEmail = email.trim();
@@ -45,7 +45,7 @@ export class SupportChatSessionService {
     const storageKey = this.key();
     const body: SessionCreateRequest = {
       platform: this.config.platform, vectorStoreId: this.config.vectorStoreId, language: this.config.language,
-      ...(this.config.userId ? { userId: this.config.userId } : {}), ...(email || this.config.email ? { email: email || this.config.email! } : {}),
+      ...(this.config.userId != null && this.config.userId !== '' ? { userId: this.config.userId } : {}), ...(email || this.config.email ? { email: email || this.config.email! } : {}),
       ...(typeof location !== 'undefined' ? { pageContext: { pagePath: location.pathname } } : {})
     };
     const created = await firstValueFrom(this.api.createSession(body));
