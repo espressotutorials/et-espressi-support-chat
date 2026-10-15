@@ -4,7 +4,8 @@ import { ESPRESSO_SUPPORT_CHAT_CONFIG } from '../support-chat.config';
 import { SupportChatConfig } from '../support-chat.models';
 import { SupportChatModule } from '../support-chat.module';
 import { SupportChatComponent } from './support-chat.component';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { SupportChatApiError } from '../support-chat.models';
 
 describe('SupportChatComponent identity gate', () => {
   let fixture: ComponentFixture<SupportChatComponent>;
@@ -77,6 +78,47 @@ describe('SupportChatComponent identity gate', () => {
 
     expect(component.messages.at(-1)?.text).toBe('Antwort vom Backend');
     expect(component.messages.at(-1)?.result?.sources?.[0].title).toBe('Wissensbasis.md');
+  });
+
+  it('clears the loading state and keeps feedback available when the API rejects a rating', async () => {
+    mount({ email: 'person@example.org' });
+    const component = fixture.componentInstance;
+    component.showFeedback = true;
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-1', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    spyOn(component.api, 'feedback').and.returnValue(throwError(() => new SupportChatApiError(409, 'INVALID_STATE', 'Rating cannot be changed.')));
+
+    await component.end('positive');
+
+    expect(component.busy).toBeFalse();
+    expect(component.showFeedback).toBeTrue();
+    expect(component.closed).toBeFalse();
+    expect(component.error).toBe(component.strings.feedbackFailed);
+  });
+
+  it('does not submit a second rating when closing fails after feedback was saved', async () => {
+    mount({ email: 'person@example.org' });
+    const component = fixture.componentInstance;
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-1', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    const feedback = spyOn(component.api, 'feedback').and.returnValue(of({}));
+    spyOn(component.api, 'close').and.returnValues(
+      throwError(() => new SupportChatApiError(409, 'INVALID_STATE', 'Session cannot be closed.')),
+      of({})
+    );
+
+    await component.end('positive');
+    expect(component.busy).toBeFalse();
+    expect(component.closed).toBeFalse();
+    expect(component.error).toBe(component.strings.genericError);
+    await component.end('negative');
+
+    expect(feedback).toHaveBeenCalledTimes(1);
+    expect(component.closed).toBeTrue();
   });
 
   it('clears ticket errors on chat completion and allows a fresh chat', async () => {

@@ -64,6 +64,7 @@ export class SupportChatComponent implements OnChanges {
   showFeedback = false;
   private identityGeneration = 0;
   private emailCapturedInWidget = false;
+  private feedbackSubmitted = false;
 
   constructor() {
     this.askEmail = !this.config.email && !this.hasUserId(this.config.userId);
@@ -75,6 +76,7 @@ export class SupportChatComponent implements OnChanges {
     const identityChanged = ['apiBaseUrl', 'platform', 'vectorStoreId', 'userId', 'email', 'instanceId'].some(key => !!changes[key] && !changes[key].firstChange);
     if (identityChanged) {
       this.clearCapturedEmail();
+      this.feedbackSubmitted = false;
       this.identityGeneration++; this.api.cancelPending(); this.sessions.invalidate(); this.messages = []; this.started = false; this.closed = false;
       this.pendingUserMessage = ''; this.pendingClientMessageId = ''; this.pendingMessageAdded = false;
       this.lastAssistantMessageId = undefined; this.showResolution = false; this.showFeedback = false; this.ticketState = '';
@@ -221,9 +223,24 @@ export class SupportChatComponent implements OnChanges {
     if (generation !== this.identityGeneration) return;
     if (session) {
       this.busy = true;
-      try { await firstValueFrom(this.api.feedback(session.chatId, { rating, ...(this.feedbackComment.trim() ? { comment: this.feedbackComment.trim() } : {}) }, session.sessionToken)); if (generation !== this.identityGeneration) return; await firstValueFrom(this.api.close(session.chatId, session.sessionToken)); if (generation !== this.identityGeneration) return; }
-      catch { if (generation === this.identityGeneration) this.error = this.strings.genericError; return; }
-      finally { this.busy = false; }
+      try {
+        if (!this.feedbackSubmitted) {
+          await firstValueFrom(this.api.feedback(session.chatId, { rating, ...(this.feedbackComment.trim() ? { comment: this.feedbackComment.trim() } : {}) }, session.sessionToken));
+          if (generation !== this.identityGeneration) return;
+          this.feedbackSubmitted = true;
+        }
+        await firstValueFrom(this.api.close(session.chatId, session.sessionToken));
+        if (generation !== this.identityGeneration) return;
+      }
+      catch (error) {
+        if (generation === this.identityGeneration) {
+          this.error = !this.feedbackSubmitted && error instanceof SupportChatApiError && error.code === 'INVALID_STATE'
+            ? this.strings.feedbackFailed
+            : this.strings.genericError;
+        }
+        return;
+      }
+      finally { this.busy = false; this.changeDetector.markForCheck(); }
     }
     this.finishChat();
   }
@@ -235,6 +252,7 @@ export class SupportChatComponent implements OnChanges {
   }
   startNewChat(): void {
     this.sessions.invalidate();
+    this.feedbackSubmitted = false;
     this.messages = []; this.started = false; this.closed = false; this.showFeedback = false; this.showResolution = false;
     this.ticketState = ''; this.error = ''; this.input = ''; this.pendingUserMessage = ''; this.pendingClientMessageId = '';
     this.pendingMessageAdded = false; this.feedbackComment = ''; this.lastAssistantMessageId = undefined;
@@ -243,7 +261,7 @@ export class SupportChatComponent implements OnChanges {
     this.changeDetector.markForCheck();
   }
   private finishChat(): void {
-    this.sessions.invalidate(); this.showFeedback = false; this.closed = true; this.started = false; this.messages = [];
+    this.sessions.invalidate(); this.feedbackSubmitted = false; this.showFeedback = false; this.closed = true; this.started = false; this.messages = [];
     this.ticketState = ''; this.error = ''; this.pendingUserMessage = ''; this.pendingClientMessageId = ''; this.pendingMessageAdded = false;
     this.showResolution = false; this.lastAssistantMessageId = undefined;
     this.clearCapturedEmail();
