@@ -1,6 +1,6 @@
 {
   "name": "@espresso-tutorials/support-chat-workspace",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Reusable Angular support chat library and self-contained custom element",
   "license": "UNLICENSED",
