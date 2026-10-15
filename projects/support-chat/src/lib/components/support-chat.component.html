@@ -44,7 +44,11 @@
       }
       @for (message of messages; track $index) {
         <article class="et-bubble" [class.et-user]="message.role === 'user'" [class.et-assistant]="message.role === 'assistant'">
-          <span>{{ message.text }}</span>
+          @if (message.role === 'assistant') {
+            <div class="et-markdown" [innerHTML]="renderMarkdown(message.text)"></div>
+          } @else {
+            <span>{{ message.text }}</span>
+          }
           @if (message.result?.sources?.length) {
             <ul class="et-sources">
               <li class="et-sources-label">{{ strings.sources }}</li>

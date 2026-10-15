@@ -7,6 +7,7 @@ import { EnvironmentCollectorService } from '../services/environment-collector.s
 import { SupportChatApiService } from '../services/support-chat-api.service';
 import { SupportChatSessionService } from '../services/support-chat-session.service';
 import { ChatStrings, getChatStrings } from '../i18n/messages';
+import { renderMarkdown } from './markdown';
 
 @Component({
   selector: 'et-support-chat',
@@ -91,6 +92,10 @@ export class SupportChatComponent implements OnChanges {
 
   get strings(): ChatStrings {
     return getChatStrings(this.config.language);
+  }
+
+  renderMarkdown(text: string): string {
+    return renderMarkdown(text);
   }
 
   private hasUserId(userId: string | number | null | undefined): boolean {
