@@ -45,7 +45,7 @@ export class SupportChatSessionService {
     const storageKey = this.key();
     const body: SessionCreateRequest = {
       platform: this.config.platform, vectorStoreId: this.config.vectorStoreId, language: this.config.language,
-      ...(this.config.userId != null && this.config.userId !== '' ? { userId: this.config.userId } : {}), ...(email || this.config.email ? { email: email || this.config.email! } : {}),
+      ...(this.config.userId != null && this.config.userId !== '' ? { userId: String(this.config.userId) } : {}), ...(email || this.config.email ? { email: email || this.config.email! } : {}),
       ...(typeof location !== 'undefined' ? { pageContext: { pagePath: location.pathname } } : {})
     };
     const created = await firstValueFrom(this.api.createSession(body));

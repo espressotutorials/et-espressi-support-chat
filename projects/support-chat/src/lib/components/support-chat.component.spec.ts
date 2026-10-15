@@ -26,12 +26,12 @@ describe('SupportChatComponent identity gate', () => {
     mount({ userId: '4711' }); expect(fixture.componentInstance.askEmail).toBeFalse();
     expect(fixture.componentInstance.config.email).toBeFalsy();
   });
-  it('accepts numeric userIds and sends them as numbers when creating a session', async () => {
+  it('accepts numeric userIds and sends them as strings when creating a session', async () => {
     mount({ userId: 637 });
     expect(fixture.componentInstance.askEmail).toBeFalse();
     const creating = fixture.componentInstance.sessions.create();
     const req = http.expectOne('https://api.example/api/v1/support-chat/sessions');
-    expect(req.request.body.userId).toBe(637);
+    expect(req.request.body.userId).toBe('637');
     req.flush({ chatId: 'chat-1', sessionToken: 'token', platform: 'et-de', language: 'de', expiresAt: new Date(Date.now() + 60_000).toISOString() });
     await creating;
   });

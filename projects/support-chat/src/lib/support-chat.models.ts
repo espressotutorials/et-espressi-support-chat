@@ -10,7 +10,7 @@ export interface SupportChatConfig {
 export interface PageContext { pagePath: string; }
 export interface SessionCreateRequest {
   platform: string; vectorStoreId: string; language: SupportLanguage;
-  userId?: string | number; email?: string; pageContext?: PageContext;
+  userId?: string; email?: string; pageContext?: PageContext;
 }
 export interface SupportSession {
   chatId: string; sessionToken: string; contactStatus?: string; platform: string;
