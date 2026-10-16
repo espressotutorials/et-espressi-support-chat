@@ -6,7 +6,7 @@ export interface ChatStrings {
   yes: string; no: string; ticket: string; feedback: string; comment: string; continue: string;
   ticketSuccess: string; ticketUnknown: string; ticketFailed: string; noKnowledge: string; genericError: string; sensitive: string;
   expired: string; rateLimited: string; retry: string; skip: string; loading: string; sources: string;
-  feedbackFailed: string; chatEnded: string; newChat: string;
+  feedbackFailed: string; requestUncertain?: string; replyMismatch?: string; feedbackUncertain?: string; chatEnded: string; newChat: string;
 }
 
 type LocalizedLanguage = Exclude<SupportLanguage, 'pt'>;
@@ -22,6 +22,8 @@ const messages: Record<LocalizedLanguage, ChatStrings> = {
     genericError: 'Something went wrong. Please try again.', sensitive: 'Please do not include sensitive information in your message.',
     expired: 'The session expired. Retry to start a new chat.', rateLimited: 'Please wait before trying again.', retry: 'Retry sending', skip: 'Skip',
     loading: 'One moment please…', sources: 'Sources', feedbackFailed: 'Your rating could not be saved. You can try again or skip it.',
+    requestUncertain: 'We did not receive a response. Your message may have been processed; retrying will reuse the same message ID.', replyMismatch: 'The response did not match this message and was not displayed. You can retry this message.',
+    feedbackUncertain: 'We could not confirm whether your rating was saved. It will not be sent again; skip to close the chat.',
     chatEnded: 'This chat has ended. If you have more questions, start a new chat.', newChat: 'Start a new chat'
   },
   de: {
@@ -34,6 +36,8 @@ const messages: Record<LocalizedLanguage, ChatStrings> = {
     genericError: 'Etwas ist schiefgelaufen. Bitte versuche es erneut.', sensitive: 'Bitte teile keine sensiblen Daten im Nachrichtentext.',
     expired: 'Die Sitzung ist abgelaufen. Mit erneutem Senden startest du einen neuen Chat.', rateLimited: 'Bitte warte kurz, bevor du es erneut versuchst.', retry: 'Erneut senden', skip: 'Überspringen',
     loading: 'Einen Moment bitte…', sources: 'Quellen', feedbackFailed: 'Deine Bewertung konnte nicht gespeichert werden. Du kannst es erneut versuchen oder überspringen.',
+    requestUncertain: 'Es kam keine Antwort zurück. Deine Nachricht könnte verarbeitet worden sein; beim erneuten Versuch wird dieselbe Nachrichten-ID verwendet.', replyMismatch: 'Die Antwort passt nicht zu dieser Nachricht und wurde nicht angezeigt. Du kannst die Nachricht erneut versuchen.',
+    feedbackUncertain: 'Der Status deiner Bewertung ist unklar. Sie wird nicht erneut gesendet; überspringe die Bewertung, um den Chat zu schließen.',
     chatEnded: 'Der Chat ist beendet. Wenn du weitere Fragen hast, starte einfach einen neuen Chat.', newChat: 'Neuen Chat starten'
   },
   es: {
@@ -46,6 +50,8 @@ const messages: Record<LocalizedLanguage, ChatStrings> = {
     genericError: 'Se ha producido un error. Inténtalo de nuevo.', sensitive: 'No incluyas información confidencial en tu mensaje.',
     expired: 'La sesión ha caducado. Vuelve a enviar el mensaje para iniciar un chat nuevo.', rateLimited: 'Espera un momento antes de volver a intentarlo.', retry: 'Reintentar envío', skip: 'Omitir',
     loading: 'Un momento, por favor…', sources: 'Fuentes', feedbackFailed: 'No se ha podido guardar tu valoración. Puedes volver a intentarlo u omitirla.',
+    requestUncertain: 'No se recibió respuesta. Es posible que el mensaje se haya procesado; al reintentarlo se usará el mismo identificador.', replyMismatch: 'La respuesta no corresponde a este mensaje y no se ha mostrado. Puedes volver a intentarlo.',
+    feedbackUncertain: 'No se pudo confirmar si se guardó tu valoración. No se enviará otra vez; omítela para cerrar el chat.',
     chatEnded: 'Este chat ha finalizado. Si tienes más preguntas, inicia un chat nuevo.', newChat: 'Iniciar un chat nuevo'
   },
   fr: {
@@ -58,6 +64,8 @@ const messages: Record<LocalizedLanguage, ChatStrings> = {
     genericError: 'Une erreur s’est produite. Veuillez réessayer.', sensitive: 'Veuillez ne pas inclure d’informations sensibles dans votre message.',
     expired: 'La session a expiré. Renvoyez votre message pour démarrer une nouvelle conversation.', rateLimited: 'Veuillez patienter avant de réessayer.', retry: 'Renvoyer', skip: 'Ignorer',
     loading: 'Veuillez patienter…', sources: 'Sources', feedbackFailed: 'Votre avis n’a pas pu être enregistré. Vous pouvez réessayer ou l’ignorer.',
+    requestUncertain: 'Aucune réponse n’a été reçue. Votre message a peut-être été traité ; une nouvelle tentative réutilisera le même identifiant.', replyMismatch: 'La réponse ne correspond pas à ce message et n’a pas été affichée. Vous pouvez réessayer.',
+    feedbackUncertain: 'Nous n’avons pas pu confirmer l’enregistrement de votre avis. Il ne sera pas renvoyé ; ignorez-le pour terminer le chat.',
     chatEnded: 'Cette conversation est terminée. Si vous avez d’autres questions, démarrez-en une nouvelle.', newChat: 'Démarrer une nouvelle conversation'
   },
   ja: {
@@ -70,6 +78,8 @@ const messages: Record<LocalizedLanguage, ChatStrings> = {
     genericError: 'エラーが発生しました。もう一度お試しください。', sensitive: 'メッセージに機密情報を入力しないでください。',
     expired: 'セッションの有効期限が切れました。もう一度送信すると新しいチャットが始まります。', rateLimited: '少し待ってからもう一度お試しください。', retry: '再送信', skip: 'スキップ',
     loading: 'しばらくお待ちください…', sources: '参照元', feedbackFailed: '評価を保存できませんでした。もう一度試すか、スキップしてください。',
+    requestUncertain: '応答を受信できませんでした。メッセージは処理済みの可能性があります。再試行時は同じメッセージIDを使用します。', replyMismatch: 'このメッセージに対応しない応答のため表示しませんでした。再試行できます。',
+    feedbackUncertain: '評価が保存されたか確認できません。再送信は行いません。スキップしてチャットを終了してください。',
     chatEnded: 'このチャットは終了しました。ご質問がある場合は、新しいチャットを開始してください。', newChat: '新しいチャットを開始'
   }
 };

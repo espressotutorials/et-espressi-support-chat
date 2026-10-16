@@ -1,9 +1,11 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { DestroyRef, Injectable, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, Observable, Subject, takeUntil, throwError } from 'rxjs';
+import { catchError, Observable, Subject, takeUntil, throwError, TimeoutError, timeout } from 'rxjs';
 import { ESPRESSO_SUPPORT_CHAT_CONFIG } from '../support-chat.config';
 import { ApiErrorBody, ChatMessageRequest, ChatMessageResponse, FeedbackRequest, ResolutionRequest, SessionCreateRequest, SupportChatApiError, SupportSession, TicketRequest, TicketResponse } from '../support-chat.models';
+
+const REQUEST_TIMEOUT_MS = 60_000;
 
 @Injectable()
 export class SupportChatApiService {
@@ -23,9 +25,12 @@ export class SupportChatApiService {
   cancelPending(): void { this.cancelRequests.next(); }
   private headers(token: string): HttpHeaders { return new HttpHeaders({ 'X-Support-Session-Token': token }); }
   private request<T>(request: Observable<T>): Observable<T> {
-    return request.pipe(takeUntil(this.cancelRequests), takeUntilDestroyed(this.destroyRef), catchError((e: HttpErrorResponse) => {
+    return request.pipe(timeout({ first: REQUEST_TIMEOUT_MS }), takeUntil(this.cancelRequests), takeUntilDestroyed(this.destroyRef), catchError((e: unknown) => {
+      if (e instanceof TimeoutError) return throwError(() => new SupportChatApiError(0, 'REQUEST_TIMEOUT', 'The request timed out.'));
+      if (!(e instanceof HttpErrorResponse)) return throwError(() => new SupportChatApiError(0, 'UNKNOWN', 'The request could not be completed.'));
       const body = (e.error ?? {}) as ApiErrorBody;
       if (e.status === 401 || e.status === 403) return throwError(() => new SupportChatApiError(e.status, 'SESSION_EXPIRED', 'Your chat session has expired.'));
+      if (e.status === 0) return throwError(() => new SupportChatApiError(0, 'NETWORK_ERROR', body.message ?? 'The network request failed.'));
       return throwError(() => new SupportChatApiError(e.status, body.code ?? 'UNKNOWN', body.message ?? 'The request could not be completed.'));
     }));
   }

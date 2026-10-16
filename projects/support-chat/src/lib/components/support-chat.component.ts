@@ -9,6 +9,16 @@ import { SupportChatSessionService } from '../services/support-chat-session.serv
 import { ChatStrings, getChatStrings } from '../i18n/messages';
 import { renderMarkdown } from './markdown';
 
+type ChatTurnStatus = 'pending' | 'answered' | 'failed' | 'uncertain';
+interface ChatViewMessage {
+  role: 'user' | 'assistant';
+  text: string;
+  result?: ChatMessageResponse;
+  chatId?: string;
+  clientMessageId?: string;
+  status?: ChatTurnStatus;
+}
+
 @Component({
   selector: 'et-support-chat',
   standalone: true,
@@ -55,13 +65,13 @@ export class SupportChatComponent implements OnChanges {
   feedbackComment = '';
   error = '';
   ticketState = '';
-  messages: Array<{ role: 'user' | 'assistant'; text: string; result?: ChatMessageResponse }> = [];
+  messages: ChatViewMessage[] = [];
   pendingUserMessage = '';
   private pendingClientMessageId = '';
-  private pendingMessageAdded = false;
   lastAssistantMessageId?: string;
   showResolution = false;
   showFeedback = false;
+  feedbackUncertain = false;
   private identityGeneration = 0;
   private emailCapturedInWidget = false;
   private feedbackSubmitted = false;
@@ -73,13 +83,14 @@ export class SupportChatComponent implements OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    const identityChanged = ['apiBaseUrl', 'platform', 'vectorStoreId', 'userId', 'email', 'instanceId'].some(key => !!changes[key] && !changes[key].firstChange);
+    const identityChanged = ['apiBaseUrl', 'platform', 'vectorStoreId', 'language', 'userId', 'email', 'instanceId'].some(key => !!changes[key] && !changes[key].firstChange);
     if (identityChanged) {
       this.clearCapturedEmail();
       this.feedbackSubmitted = false;
       this.identityGeneration++; this.api.cancelPending(); this.sessions.invalidate(); this.messages = []; this.started = false; this.closed = false;
-      this.pendingUserMessage = ''; this.pendingClientMessageId = ''; this.pendingMessageAdded = false;
-      this.lastAssistantMessageId = undefined; this.showResolution = false; this.showFeedback = false; this.ticketState = '';
+      this.pendingUserMessage = ''; this.pendingClientMessageId = '';
+      this.lastAssistantMessageId = undefined; this.showResolution = false; this.showFeedback = false; this.ticketState = ''; this.error = '';
+      this.feedbackUncertain = false;
     }
     Object.assign(this.config, {
       ...(this.apiBaseUrl ? { apiBaseUrl: this.apiBaseUrl } : {}), ...(this.platform ? { platform: this.platform } : {}),
@@ -102,6 +113,10 @@ export class SupportChatComponent implements OnChanges {
 
   private hasUserId(userId: string | number | null | undefined): boolean {
     return userId !== null && userId !== undefined && userId !== '';
+  }
+
+  private isUncertainRequest(error: unknown): boolean {
+    return error instanceof SupportChatApiError && (error.status === 0 || error.status >= 500 || ['REQUEST_TIMEOUT', 'NETWORK_ERROR', 'CHAT_BUSY'].includes(error.code));
   }
 
   async show(): Promise<void> {
@@ -152,14 +167,17 @@ export class SupportChatComponent implements OnChanges {
   }
   async send(): Promise<void> {
     if (this.busy || !this.input.trim()) return;
+    this.showResolution = false;
+    this.lastAssistantMessageId = undefined;
     if (!this.config.email && !this.hasUserId(this.config.userId)) { this.pendingUserMessage = this.input.trim(); this.pendingClientMessageId = this.uuid(); this.input = ''; this.askEmail = true; return; }
     this.pendingUserMessage = this.input.trim(); this.input = '';
-    this.pendingClientMessageId = this.uuid(); this.pendingMessageAdded = false;
+    this.pendingClientMessageId = this.uuid();
     await this.sendPending();
   }
   async sendPending(): Promise<void> {
     if (!this.pendingUserMessage || this.busy) return;
     const generation = this.identityGeneration;
+    let messageRequestStarted = false;
     this.busy = true; this.error = '';
     try {
       let session = await this.sessions.get();
@@ -176,17 +194,51 @@ export class SupportChatComponent implements OnChanges {
       if (generation !== this.identityGeneration) return;
       this.started = true;
       const text = this.pendingUserMessage;
-      if (!this.pendingMessageAdded) { this.messages.push({ role: 'user', text }); this.pendingMessageAdded = true; }
-      const result = await firstValueFrom(this.api.sendMessage(session.chatId, { clientMessageId: this.pendingClientMessageId, message: text }, session.sessionToken));
+      const requestClientMessageId = this.pendingClientMessageId;
+      let userTurn = this.messages.find(message => message.role === 'user' && message.clientMessageId === requestClientMessageId);
+      if (!userTurn) {
+        userTurn = { role: 'user', text, chatId: session.chatId, clientMessageId: requestClientMessageId, status: 'pending' };
+        this.messages.push(userTurn);
+      } else {
+        userTurn.chatId = session.chatId;
+        userTurn.status = 'pending';
+      }
+      messageRequestStarted = true;
+      const result = await firstValueFrom(this.api.sendMessage(session.chatId, { clientMessageId: requestClientMessageId, message: text }, session.sessionToken));
       if (generation !== this.identityGeneration) return;
-      this.pendingUserMessage = ''; this.pendingClientMessageId = ''; this.pendingMessageAdded = false;
-      this.messages.push({ role: 'assistant', text: result.answer ?? result.message ?? '', result }); this.lastAssistantMessageId = result.messageId; this.showResolution = true;
+      if (this.pendingClientMessageId !== requestClientMessageId) return;
+      if (result.clientMessageId !== undefined && result.clientMessageId !== requestClientMessageId) {
+        userTurn.status = 'uncertain';
+        this.error = this.strings.replyMismatch ?? this.strings.genericError;
+        return;
+      }
+      userTurn.status = 'answered';
+      this.pendingUserMessage = ''; this.pendingClientMessageId = '';
+      this.messages.push({ role: 'assistant', text: result.answer ?? result.message ?? '', result, chatId: session.chatId, clientMessageId: requestClientMessageId });
+      this.lastAssistantMessageId = result.messageId;
+      this.showResolution = result.resolutionPrompt !== false;
+      if (result.needsHumanSupport) this.ticketState = 'offered';
     } catch (e) {
       if (generation !== this.identityGeneration) return;
-      if (e instanceof SupportChatApiError && e.code === 'EMAIL_REQUIRED') { this.pendingUserMessage = this.pendingUserMessage || this.messages.at(-1)?.text || ''; this.pendingClientMessageId ||= this.uuid(); this.askEmail = true; }
-      else if (e instanceof SupportChatApiError && e.code === 'SESSION_EXPIRED') { this.sessions.invalidate(); this.clearCapturedEmail(); this.started = false; this.askEmail = !this.config.email && !this.hasUserId(this.config.userId); this.error = this.strings.expired; }
-      else if (e instanceof SupportChatApiError && e.code === 'NO_KNOWLEDGE_MATCH') { this.error = this.strings.noKnowledge; this.ticketState = 'offered'; }
-      else this.error = e instanceof SupportChatApiError && e.code === 'RATE_LIMITED' ? this.strings.rateLimited : this.strings.genericError;
+      const userTurn = this.messages.find(message => message.role === 'user' && message.clientMessageId === this.pendingClientMessageId);
+      if (e instanceof SupportChatApiError && e.code === 'EMAIL_REQUIRED') {
+        if (userTurn) userTurn.status = 'pending';
+        this.pendingUserMessage = this.pendingUserMessage || userTurn?.text || '';
+        this.pendingClientMessageId ||= this.uuid(); this.askEmail = true;
+      }
+      else if (e instanceof SupportChatApiError && e.code === 'SESSION_EXPIRED') {
+        if (userTurn) userTurn.status = 'pending';
+        this.sessions.invalidate(); this.clearCapturedEmail(); this.started = false; this.askEmail = !this.config.email && !this.hasUserId(this.config.userId); this.error = this.strings.expired;
+      }
+      else if (e instanceof SupportChatApiError && e.code === 'NO_KNOWLEDGE_MATCH') {
+        if (userTurn) userTurn.status = 'failed';
+        this.error = this.strings.noKnowledge; this.ticketState = 'offered';
+      }
+      else {
+        const uncertain = this.isUncertainRequest(e);
+        if (userTurn) userTurn.status = uncertain ? 'uncertain' : 'failed';
+        this.error = e instanceof SupportChatApiError && e.code === 'RATE_LIMITED' ? this.strings.rateLimited : uncertain && messageRequestStarted ? this.strings.requestUncertain ?? this.strings.genericError : this.strings.genericError;
+      }
     } finally { this.busy = false; this.changeDetector.markForCheck(); }
   }
   async continueAfterEmail(): Promise<void> { if (await this.submitEmail()) await this.sendPending(); }
@@ -213,12 +265,13 @@ export class SupportChatComponent implements OnChanges {
     } catch (e) {
       if (generation !== this.identityGeneration) return;
       if (e instanceof SupportChatApiError && e.code === 'EMAIL_REQUIRED') { this.ticketState = 'pending'; this.askEmail = true; }
-      else this.ticketState = e instanceof SupportChatApiError && e.code === 'TICKET_UNKNOWN' ? 'unknown' : 'failed';
+      else this.ticketState = e instanceof SupportChatApiError && (e.code === 'TICKET_UNKNOWN' || this.isUncertainRequest(e)) ? 'unknown' : 'failed';
     }
     finally { this.busy = false; this.changeDetector.markForCheck(); }
   }
   async end(rating?: 'positive' | 'negative'): Promise<void> {
     if (!rating) { this.showFeedback = true; return; }
+    if (this.feedbackUncertain) { await this.skipFeedback(); return; }
     const generation = this.identityGeneration; const session = await this.sessions.get();
     if (generation !== this.identityGeneration) return;
     if (session) {
@@ -234,9 +287,14 @@ export class SupportChatComponent implements OnChanges {
       }
       catch (error) {
         if (generation === this.identityGeneration) {
-          this.error = !this.feedbackSubmitted && error instanceof SupportChatApiError && error.code === 'INVALID_STATE'
-            ? this.strings.feedbackFailed
-            : this.strings.genericError;
+          if (!this.feedbackSubmitted && this.isUncertainRequest(error)) {
+            this.feedbackUncertain = true;
+            this.error = this.strings.feedbackUncertain ?? this.strings.genericError;
+          } else {
+            this.error = !this.feedbackSubmitted && error instanceof SupportChatApiError && error.code === 'INVALID_STATE'
+              ? this.strings.feedbackFailed
+              : this.strings.genericError;
+          }
         }
         return;
       }
@@ -253,16 +311,17 @@ export class SupportChatComponent implements OnChanges {
   startNewChat(): void {
     this.sessions.invalidate();
     this.feedbackSubmitted = false;
+    this.feedbackUncertain = false;
     this.messages = []; this.started = false; this.closed = false; this.showFeedback = false; this.showResolution = false;
     this.ticketState = ''; this.error = ''; this.input = ''; this.pendingUserMessage = ''; this.pendingClientMessageId = '';
-    this.pendingMessageAdded = false; this.feedbackComment = ''; this.lastAssistantMessageId = undefined;
+    this.feedbackComment = ''; this.lastAssistantMessageId = undefined;
     this.askEmail = !this.config.email && !this.hasUserId(this.config.userId);
     this.emailDraft = this.config.email ?? '';
     this.changeDetector.markForCheck();
   }
   private finishChat(): void {
-    this.sessions.invalidate(); this.feedbackSubmitted = false; this.showFeedback = false; this.closed = true; this.started = false; this.messages = [];
-    this.ticketState = ''; this.error = ''; this.pendingUserMessage = ''; this.pendingClientMessageId = ''; this.pendingMessageAdded = false;
+    this.sessions.invalidate(); this.feedbackSubmitted = false; this.feedbackUncertain = false; this.showFeedback = false; this.closed = true; this.started = false; this.messages = [];
+    this.ticketState = ''; this.error = ''; this.pendingUserMessage = ''; this.pendingClientMessageId = '';
     this.showResolution = false; this.lastAssistantMessageId = undefined;
     this.clearCapturedEmail();
     this.changeDetector.markForCheck();

@@ -4,7 +4,8 @@ import { ESPRESSO_SUPPORT_CHAT_CONFIG } from '../support-chat.config';
 import { SupportChatConfig } from '../support-chat.models';
 import { SupportChatModule } from '../support-chat.module';
 import { SupportChatComponent } from './support-chat.component';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
+import { SimpleChange } from '@angular/core';
 import { SupportChatApiError } from '../support-chat.models';
 
 describe('SupportChatComponent identity gate', () => {
@@ -42,6 +43,26 @@ describe('SupportChatComponent identity gate', () => {
   it('does not ask again when both userId and email are configured', () => {
     mount({ userId: '4711', email: 'person@example.org' }); expect(fixture.componentInstance.askEmail).toBeFalse();
   });
+  it('adds the required ticket email to the existing session before using the Node ticket route', async () => {
+    mount({ userId: '4711', product: 'et.training' });
+    const component = fixture.componentInstance;
+    component.started = true;
+    component.ticketState = 'pending';
+    component.emailDraft = 'person@example.org';
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-1', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    const addContact = spyOn(component.api, 'addContact').and.returnValue(of({}));
+    const ticket = spyOn(component.api, 'ticket').and.returnValue(of({ status: 'submitted', ticketId: 'ticket-1' }));
+
+    await component.continueTicketAfterEmail();
+
+    expect(addContact).toHaveBeenCalledOnceWith('chat-1', 'person@example.org', 'token');
+    expect(ticket).toHaveBeenCalledTimes(1);
+    expect(ticket.calls.first().args[1].environment.product).toBe('et.training');
+    expect(component.ticketState).toBe('submitted');
+  });
 
   it('keeps the dialog mounted until the close animation finishes', () => {
     mount({ email: 'person@example.org' });
@@ -69,7 +90,7 @@ describe('SupportChatComponent identity gate', () => {
       expiresAt: new Date(Date.now() + 60_000).toISOString()
     });
     spyOn(component.api, 'sendMessage').and.returnValue(of({
-      messageId: 'message-1', clientMessageId: 'client-1', answer: 'Antwort vom Backend',
+      messageId: 'message-1', answer: 'Antwort vom Backend',
       sources: [{ title: 'Wissensbasis.md', fileId: 'file-1' }], resolutionPrompt: true,
       needsHumanSupport: false, status: 'open'
     }));
@@ -78,6 +99,219 @@ describe('SupportChatComponent identity gate', () => {
 
     expect(component.messages.at(-1)?.text).toBe('Antwort vom Backend');
     expect(component.messages.at(-1)?.result?.sources?.[0].title).toBe('Wissensbasis.md');
+  });
+
+  it('keeps four sequential questions paired with the response echoing each client message id', async () => {
+    mount({ email: 'person@example.org' });
+    const component = fixture.componentInstance;
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-1', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    const answers = ['Markiere den gewünschten Text.', 'Öffne die Einstellungen des Lesemodus.', 'Prüfe zuerst die Auswahl des Textes.', 'Wähle den Modus in den Anzeigeoptionen.'];
+    let answerIndex = 0;
+    spyOn(component.api, 'sendMessage').and.callFake((_chatId, body) => of({
+      messageId: `reply-${answerIndex}`, clientMessageId: body.clientMessageId, answer: answers[answerIndex++]
+    }));
+    const resolution = spyOn(component.api, 'resolution').and.returnValue(of({}));
+
+    for (const question of ['Wie markiere ich Text?', 'Wie wechsle ich den Lesemodus?', 'Markieren ist nicht möglich.', 'Wie öffne ich den nativen Modus?']) {
+      component.input = question;
+      await component.send();
+    }
+
+    expect(component.messages.length).toBe(8);
+    for (let turn = 0; turn < 4; turn++) {
+      expect(component.messages[turn * 2].role).toBe('user');
+      expect(component.messages[turn * 2].text).toBe(['Wie markiere ich Text?', 'Wie wechsle ich den Lesemodus?', 'Markieren ist nicht möglich.', 'Wie öffne ich den nativen Modus?'][turn]);
+      expect(component.messages[turn * 2 + 1].role).toBe('assistant');
+      expect(component.messages[turn * 2 + 1].text).toBe(answers[turn]);
+      expect(component.messages[turn * 2].clientMessageId).toBe(component.messages[turn * 2 + 1].clientMessageId);
+      expect(component.messages[turn * 2].chatId).toBe('chat-1');
+    }
+    await component.resolve(true);
+    expect(resolution.calls.first().args[1].messageId).toBe('reply-3');
+  });
+
+  it('rejects an answer carrying a different client message id', async () => {
+    mount({ email: 'person@example.org' });
+    const component = fixture.componentInstance;
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-1', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    spyOn(component.api, 'sendMessage').and.returnValue(of({ messageId: 'old-reply', clientMessageId: 'another-turn', answer: 'Verspätete Antwort' }));
+    component.input = 'Neue Frage';
+
+    await component.send();
+
+    expect(component.messages.length).toBe(1);
+    expect(component.messages[0].status).toBe('uncertain');
+    expect(component.error).toBe(component.strings.replyMismatch!);
+    expect(component.pendingUserMessage).toBe('Neue Frage');
+    expect(component.showResolution).toBeFalse();
+  });
+
+  it('ignores a late response after the platform changes', async () => {
+    mount({ email: 'person@example.org' });
+    const component = fixture.componentInstance;
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-old', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    const response = new Subject<{ messageId: string; clientMessageId: string; answer: string }>();
+    spyOn(component.api, 'sendMessage').and.returnValue(response);
+    component.input = 'Frage in der alten Plattform';
+    const sending = component.send();
+    await Promise.resolve();
+    expect(component.api.sendMessage).toHaveBeenCalledTimes(1);
+
+    component.platform = 'et-fr';
+    component.ngOnChanges({ platform: new SimpleChange('et-de', 'et-fr', false) });
+    response.next({ messageId: 'late-reply', clientMessageId: component.pendingUserMessage, answer: 'Alte Antwort' });
+    response.complete();
+    await sending;
+
+    expect(component.messages).toEqual([]);
+    expect(component.config.platform).toBe('et-fr');
+  });
+
+  it('starts a clean language context and ignores the previous language response', async () => {
+    mount({ email: 'person@example.org' });
+    const component = fixture.componentInstance;
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-de', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    const response = new Subject<{ messageId: string; clientMessageId: string; answer: string }>();
+    const sendMessage = spyOn(component.api, 'sendMessage').and.returnValue(response);
+    component.input = 'Frage auf Deutsch';
+    const sending = component.send();
+    await Promise.resolve();
+    const clientMessageId = sendMessage.calls.first().args[1].clientMessageId;
+
+    component.language = 'en';
+    component.ngOnChanges({ language: new SimpleChange('de', 'en', false) });
+    response.next({ messageId: 'late-reply', clientMessageId, answer: 'Alte Antwort auf Deutsch' });
+    response.complete();
+    await sending;
+
+    expect(component.messages).toEqual([]);
+    expect(component.config.language).toBe('en');
+    expect(component.error).toBe('');
+  });
+
+  it('ignores duplicate submits while a turn is still pending', async () => {
+    mount({ email: 'person@example.org' });
+    const component = fixture.componentInstance;
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-1', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    const response = new Subject<{ messageId: string; clientMessageId: string; answer: string }>();
+    const sendMessage = spyOn(component.api, 'sendMessage').and.returnValue(response);
+    component.input = 'Erste Frage';
+    const firstSend = component.send();
+    component.input = 'Doppelte Eingabe';
+    await component.send();
+    await Promise.resolve();
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    const clientMessageId = sendMessage.calls.first().args[1].clientMessageId;
+    response.next({ messageId: 'reply-1', clientMessageId, answer: 'Antwort zur ersten Frage' });
+    response.complete();
+    await firstSend;
+
+    expect(component.messages.filter(message => message.role === 'user').length).toBe(1);
+    expect(component.messages.at(-1)?.text).toBe('Antwort zur ersten Frage');
+    expect(component.input).toBe('Doppelte Eingabe');
+  });
+
+  it('keeps the same client message id for an explicit retry after a timeout', async () => {
+    mount({ email: 'person@example.org' });
+    const component = fixture.componentInstance;
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-1', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    const sendMessage = spyOn(component.api, 'sendMessage').and.returnValues(
+      throwError(() => new SupportChatApiError(0, 'REQUEST_TIMEOUT', 'Timed out')),
+      of({ messageId: 'reply-1', answer: 'Antwort nach Retry' })
+    );
+    component.input = 'Frage mit unklarem Requeststatus';
+
+    await component.send();
+    const firstId = sendMessage.calls.first().args[1].clientMessageId;
+    expect(component.messages[0].status).toBe('uncertain');
+    expect(component.error).toBe(component.strings.requestUncertain!);
+    await component.sendPending();
+
+    expect(sendMessage.calls.count()).toBe(2);
+    expect(sendMessage.calls.mostRecent().args[1].clientMessageId).toBe(firstId);
+    expect(component.messages.filter(message => message.role === 'user').length).toBe(1);
+    expect(component.messages.at(-1)?.text).toBe('Antwort nach Retry');
+  });
+
+  it('treats CHAT_BUSY as an uncertain turn without automatically resending it', async () => {
+    mount({ email: 'person@example.org' });
+    const component = fixture.componentInstance;
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-1', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    const sendMessage = spyOn(component.api, 'sendMessage').and.returnValue(
+      throwError(() => new SupportChatApiError(409, 'CHAT_BUSY', 'A message is already processing.'))
+    );
+    component.input = 'Noch verarbeitete Frage';
+
+    await component.send();
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(component.messages[0].status).toBe('uncertain');
+    expect(component.error).toBe(component.strings.requestUncertain!);
+    expect(component.busy).toBeFalse();
+  });
+
+  it('does not submit an uncertain feedback rating twice and allows closing without a rating retry', async () => {
+    mount({ email: 'person@example.org' });
+    const component = fixture.componentInstance;
+    component.showFeedback = true;
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-1', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    const feedback = spyOn(component.api, 'feedback').and.returnValue(
+      throwError(() => new SupportChatApiError(0, 'REQUEST_TIMEOUT', 'Timed out'))
+    );
+    const close = spyOn(component.api, 'close').and.returnValue(of({}));
+
+    await component.end('positive');
+    expect(component.feedbackUncertain).toBeTrue();
+    expect(component.busy).toBeFalse();
+    expect(component.error).toBe(component.strings.feedbackUncertain!);
+
+    await component.skipFeedback();
+    expect(feedback).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(component.closed).toBeTrue();
+  });
+
+  it('marks a ticket timeout as unknown to prevent accidental duplicate ticket creation', async () => {
+    mount({ email: 'person@example.org' });
+    const component = fixture.componentInstance;
+    spyOn(component.sessions, 'get').and.resolveTo({
+      chatId: 'chat-1', sessionToken: 'token', platform: 'et-de', language: 'de',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
+    const ticket = spyOn(component.api, 'ticket').and.returnValue(
+      throwError(() => new SupportChatApiError(0, 'REQUEST_TIMEOUT', 'Timed out'))
+    );
+
+    await component.createTicket();
+
+    expect(ticket).toHaveBeenCalledTimes(1);
+    expect(component.ticketState).toBe('unknown');
+    expect(component.busy).toBeFalse();
   });
 
   it('clears the loading state and keeps feedback available when the API rejects a rating', async () => {

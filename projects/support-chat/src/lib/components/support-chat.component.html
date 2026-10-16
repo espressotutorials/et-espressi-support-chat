@@ -103,11 +103,16 @@
       @if (showFeedback) {
         <div class="et-action">
           <strong>{{ strings.feedback }}</strong>
-          <label for="support-comment">{{ strings.comment }}</label>
-          <textarea id="support-comment" [(ngModel)]="feedbackComment"></textarea>
-          <button type="button" [disabled]="busy" (click)="end('positive')">👍</button>
-          <button type="button" [disabled]="busy" (click)="end('negative')">👎</button>
-          <button type="button" [disabled]="busy" (click)="skipFeedback()">{{ strings.skip }}</button>
+          @if (feedbackUncertain) {
+            <p role="status">{{ strings.feedbackUncertain || strings.genericError }}</p>
+            <button type="button" [disabled]="busy" (click)="skipFeedback()">{{ strings.skip }}</button>
+          } @else {
+            <label for="support-comment">{{ strings.comment }}</label>
+            <textarea id="support-comment" [(ngModel)]="feedbackComment"></textarea>
+            <button type="button" [disabled]="busy" (click)="end('positive')">👍</button>
+            <button type="button" [disabled]="busy" (click)="end('negative')">👎</button>
+            <button type="button" [disabled]="busy" (click)="skipFeedback()">{{ strings.skip }}</button>
+          }
         </div>
       }
       @if (error) {
